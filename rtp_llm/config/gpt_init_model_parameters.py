@@ -548,6 +548,7 @@ class GptInitModelParameters:
             )
         )
 
+
         # CacheStoreConfig
         self.gpt_init_params.cache_store_config = CacheStoreConfig(
             cache_store_rdma_mode=get_env_bool("CACHE_STORE_RDMA_MODE", False),

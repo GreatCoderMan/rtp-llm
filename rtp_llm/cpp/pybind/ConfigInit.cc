@@ -413,14 +413,16 @@ void register_fifo_scheduler_config(pybind11::module& m) {
              pybind11::arg("scheduler_reserve_resource_ratio") = 5,
              pybind11::arg("enable_fast_gen")                  = false,
              pybind11::arg("enable_partial_fallback")          = false,
-             pybind11::arg("fast_gen_context_budget")          = -1)
+             pybind11::arg("fast_gen_context_budget")          = -1,
+             pybind11::arg("preallocate_blocks")               = 1)
         .def("to_string", &FIFOSchedulerConfig::to_string)
         .def("update_from_env", &FIFOSchedulerConfig::update_from_env_for_test)
         .def_readwrite("max_context_batch_size", &FIFOSchedulerConfig::max_context_batch_size)
         .def_readwrite("scheduler_reserve_resource_ratio", &FIFOSchedulerConfig::scheduler_reserve_resource_ratio)
         .def_readwrite("enable_fast_gen", &FIFOSchedulerConfig::enable_fast_gen)
         .def_readwrite("enable_partial_fallback", &FIFOSchedulerConfig::enable_partial_fallback)
-        .def_readwrite("fast_gen_context_budget", &FIFOSchedulerConfig::fast_gen_context_budget);
+        .def_readwrite("fast_gen_context_budget", &FIFOSchedulerConfig::fast_gen_context_budget)
+        .def_readwrite("preallocate_blocks", &FIFOSchedulerConfig::preallocate_blocks);
 }
 
 // MiscellaneousConfig

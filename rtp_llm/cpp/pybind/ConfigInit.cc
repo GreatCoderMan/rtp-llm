@@ -408,7 +408,7 @@ void register_batch_decode_scheduler_config(pybind11::module& m) {
 // FIFOSchedulerConfig
 void register_fifo_scheduler_config(pybind11::module& m) {
     pybind11::class_<FIFOSchedulerConfig>(m, "FIFOSchedulerConfig")
-        .def(pybind11::init<int64_t, int, bool, bool, int64_t>(),
+        .def(pybind11::init<int64_t, int, bool, bool, int64_t, int64_t>(),
              pybind11::arg("max_context_batch_size")           = 1,
              pybind11::arg("scheduler_reserve_resource_ratio") = 5,
              pybind11::arg("enable_fast_gen")                  = false,

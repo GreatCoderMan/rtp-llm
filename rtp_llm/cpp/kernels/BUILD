@@ -137,7 +137,7 @@ cc_library(
     name = "cuda_cu",
     deps = [
         ":cuda_no_aux_tc",
-        ":cuda_quantization", 
+        ":cuda_quantization",
         ":cuda_moe",
         ":cuda_comm",
     ],
@@ -212,7 +212,7 @@ cc_library(
     name = "rocm_basic",
     deps = [
         ":rocm_layernorm",
-        ":rocm_quantization", 
+        ":rocm_quantization",
         ":rocm_fused_qk_rmsnorm",
     ],
     visibility = ["//visibility:public"],
@@ -432,10 +432,12 @@ cc_library(
     srcs = [
         "batch_copy.cu",
         "copy_utils.cu",
+        "cuda_graph_copy_kernel.cu",
     ],
     hdrs = [
         "batch_copy.h",
         "copy_utils.h",
+        "cuda_graph_copy_kernel.h",
     ],
     deps = any_cuda_deps + [
         "//rtp_llm/cpp/utils:core_utils",
@@ -539,7 +541,7 @@ cc_library(
         ":kernels_sampling",
         ":kernels_attention",
         ":kernels_embedding",
-        ":kernels_tensor_ops", 
+        ":kernels_tensor_ops",
         ":kernels_kv_cache",
         ":kernels_residual",
         ":kernels_copy",

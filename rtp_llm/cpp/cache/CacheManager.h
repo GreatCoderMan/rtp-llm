@@ -97,6 +97,7 @@ public:
     const CacheConfig&                     cacheConfig() const;
     size_t                                 freeBlockNums() const;
     size_t                                 availableBlockNums();
+    size_t                                 totalBlocks() const;
     KVCacheInfo                            getKVCacheInfo(int64_t latest_version, bool need_cache_keys);
     uint32_t                               maxSeqLen() const;
     const KVCacheAllocator::KVCacheBuffer& kvCacheBuffer() const;
@@ -141,7 +142,6 @@ public:
 protected:
     const BlockCache&  blockCache() const;
     size_t             cacheItemNum() const;
-    uint32_t           totalBlocks() const;
     void               initFreeBlock();
     rtp_llm::BufferPtr tryAllocateMaxBuffer();
     void               allocateAndSync();

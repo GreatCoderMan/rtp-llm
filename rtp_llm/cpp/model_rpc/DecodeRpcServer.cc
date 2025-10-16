@@ -87,9 +87,9 @@ void DecodeRpcServer::allocateResource(DecodeGenerateContext& decode_context) {
     auto input                        = QueryConverter::transQuery(&decode_context.allocate_request.input());
     auto generate_stream              = engine_->makeStream(input);
     decode_context.request_timeout_ms = generate_stream->getTimeoutMs();
-    
+
     auto cache_manager = engine_->resourceContext().cache_manager;
-    auto reserve_block_num = engine_->gptInitParameter().scheduler_reserve_resource_ratio_ * cache_manager->totalBlocks() / 100;
+    auto reserve_block_num = maga_init_params_.gpt_init_parameter.scheduler_reserve_resource_ratio_ * cache_manager->totalBlocks() / 100;
     auto current_blocks = cache_manager->availableBlockNums();
     if (current_blocks < reserve_block_num) {
         string error_msg = "request: [" + decode_context.request_key + "] malloc kv cache block failed at decode node, " + 

@@ -74,11 +74,11 @@ CacheManager::~CacheManager() {
     allocator_.reset();
 }
 
-uint32_t CacheManager::totalBlocks() const {
+size_t CacheManager::totalBlocks() const {
     return allocator_->totalBlocks();
 }
 
-uint32_t CacheManager::maxSeqLen() const {
+size_t CacheManager::maxSeqLen() const {
     return totalBlocks() * seq_size_per_block_;
 }
 

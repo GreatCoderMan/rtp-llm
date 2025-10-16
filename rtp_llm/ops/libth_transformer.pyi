@@ -254,6 +254,7 @@ class FIFOSchedulerConfig:
     fast_gen_context_budget: int
     max_context_batch_size: int
     scheduler_reserve_resource_ratio: int
+    preallocate_blocks: int
 
     def __init__(
         self,
@@ -262,6 +263,7 @@ class FIFOSchedulerConfig:
         enable_fast_gen: bool = False,
         enable_partial_fallback: bool = False,
         fast_gen_context_budget: int = -1,
+        preallocate_blocks: int = 1,
     ) -> None: ...
     def to_string(self) -> str: ...
     def update_from_env(self) -> None: ...

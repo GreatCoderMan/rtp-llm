@@ -98,8 +98,8 @@ public:
     size_t                                 freeBlockNums() const;
     size_t                                 availableBlockNums();
     size_t                                 totalBlocks() const;
+    size_t                                 maxSeqLen() const;
     KVCacheInfo                            getKVCacheInfo(int64_t latest_version, bool need_cache_keys);
-    uint32_t                               maxSeqLen() const;
     const KVCacheAllocator::KVCacheBuffer& kvCacheBuffer() const;
 
     std::tuple<bool, KVCacheResource> malloc(const KVCacheAllocator::SimpleMallocInfo& malloc_info);

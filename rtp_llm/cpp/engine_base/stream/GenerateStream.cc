@@ -996,6 +996,10 @@ std::string GenerateStream::debugString() const {
     return debug_string.str();
 }
 
+void GenerateStream::setPreAllocateBlocks(int preallocate_blocks) {
+    stream_cache_resource_->setPreAllocateBlocks(preallocate_blocks);
+}
+
 int GenerateStream::reuseBlockSize() const {
     int reuse_length       = reuseLength();
     int seq_size_per_block = seqSizePerBlock();

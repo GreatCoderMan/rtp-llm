@@ -197,6 +197,8 @@ struct FIFOSchedulerConfig {
     bool        enable_fast_gen                  = false;
     bool        enable_partial_fallback          = false;
     int64_t     fast_gen_context_budget          = -1;
+    int32_t     preallocate_blocks               = 1;
+
     std::string to_string() const;
     void        update_from_env_for_test();
 };

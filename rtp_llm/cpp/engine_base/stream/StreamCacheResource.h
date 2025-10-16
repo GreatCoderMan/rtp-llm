@@ -103,6 +103,10 @@ public:
         stream_ = stream;
     }
 
+    void setPreAllocateBlocks(int preallocate_blocks) {
+        preallocate_blocks_ = preallocate_blocks;
+    }
+
     bool reuseCache() const;
     bool enable3FS() const;
 
@@ -132,6 +136,7 @@ private:
     bool                     need_release_resource_ = true;
     int                      malloc_failed_times_   = 0;
     const std::string        adapter_name_;
+    int                      preallocate_blocks_    = 0;
 };
 
 }  // namespace rtp_llm

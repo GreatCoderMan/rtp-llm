@@ -92,7 +92,8 @@ absl::Status StreamCacheResource::releaseSequenceKVCache(size_t total_seq_len, s
 }
 
 int StreamCacheResource::singleBatchNeedBlocks(int seq_len) const {
-    return std::max((seq_len + seqSizePerBlock() - 1) / seqSizePerBlock() - maxBlockSize(), 0);
+    int need_blocks = (seq_len + seqSizePerBlock() - 1) / seqSizePerBlock() + preallocate_blocks_;
+    return std::max(need_blocks - maxBlockSize(), 0);
 }
 
 // TODO(xinfei.sxf) 保证这个函数的原子性

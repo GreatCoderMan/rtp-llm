@@ -139,6 +139,7 @@ size_t CacheManager::freeBlockNums() const {
 }
 
 size_t CacheManager::availableBlockNums() const {
+    std::lock_guard<std::mutex> guard(mutex_);
     return available_blocks_;
 }
 

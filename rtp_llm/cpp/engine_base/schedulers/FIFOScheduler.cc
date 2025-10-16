@@ -18,6 +18,7 @@ FIFOScheduler::FIFOScheduler(const rtp_llm::GptInitParameter&     params,
     max_batch_tokens_size_(params.max_batch_tokens_size_),
     max_generate_batch_size_(params.max_generate_batch_size_),
     reserve_block_num_(params.scheduler_reserve_resource_ratio_ * cache_manager->availableBlockNums() / 100),
+    preallocate_blocks_(params.fifo_scheduler_config.preallocate_blocks),
     // not support fallback when use pd_speration:use_cache_store
     enable_partial_fallback_(params.enable_partial_fallback_ && params.role_type_ == RoleType::PDFUSION),
     enable_whole_fallback_(params.role_type_ == RoleType::PDFUSION),
@@ -25,8 +26,8 @@ FIFOScheduler::FIFOScheduler(const rtp_llm::GptInitParameter&     params,
     need_fill_fake_stream_(params.dp_size_ > 1 && params.tp_rank_ == 0),
     fast_gen_max_context_len_(params.fast_gen_max_context_len_),
     metrics_reporter_(metrics_reporter) {
-    RTP_LLM_LOG_INFO("max_generate_batch_size %d", max_generate_batch_size_);
-    RTP_LLM_LOG_INFO("max_batch_tokens_size %d", max_batch_tokens_size_);
+    RTP_LLM_LOG_INFO("max_generate_batch_size is [%d], max_batch_tokens_size is [%d], reserve_block_num is [%d], preallocate_blocks is [%d]",
+        max_generate_batch_size_, max_batch_tokens_size_, reserve_block_num_, preallocate_blocks_);
 }
 
 FIFOScheduler::~FIFOScheduler() {
@@ -83,6 +84,7 @@ void FIFOScheduler::evictDoneStreams(list<GenerateStreamPtr>& streams) {
 absl::Status FIFOScheduler::enqueue(const GenerateStreamPtr& stream) {
     {
         std::lock_guard<std::mutex> lock(lock_);
+        stream->setPreAllocateBlocks(preallocate_blocks_);
         if (stream->isDummyStream() && !waiting_streams_.empty() && waiting_streams_.back()->isDummyStream()) {
             stream->stopAndRelease(ErrorCode::UNKNOWN_ERROR, "multi fake query");
             return absl::OkStatus();

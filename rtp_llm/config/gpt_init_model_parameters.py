@@ -1115,6 +1115,13 @@ class GptInitModelParameters:
         logging.info(
             f"scheduler_reserve_resource_ratio: {self.scheduler_reserve_resource_ratio}"
         )
+        self.preallocate_blocks = int(
+            os.environ.get("PREALLOCATE_BLOCKS", 1)
+        )
+        logging.info(
+            f"preallocate_blocks: {self.preallocate_blocks}"
+        )
+
         self.reuse_cache = self.py_env_configs.py_kv_cache_config.reuse_cache
         logging.info(f"reuse_cache: {self.reuse_cache}")
         self.pre_allocate_op_mem = bool(int(os.environ.get("PRE_ALLOCATE_OP_MEM", 1)))

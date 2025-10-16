@@ -174,7 +174,7 @@ def main():
 
         logging.info(f"后端RPC 服务监听的ip为 0.0.0.0，ip/ip段可自定义为所需范围")
     except Exception as e:
-        logging.error(f"start failed, {str(e)}")
+        logging.error(f"start failed: {str(e)}\nStack Trace:\n{tb}")
     finally:
         monitor_and_release_process(backend_process, frontend_process)
 

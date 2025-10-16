@@ -97,6 +97,7 @@ requirement([
     "portalocker",
     "concurrent_log_handler",
     "aiter",
+    "dataclasses-json",
 ] + tensorrt)
 
 filegroup(
@@ -350,6 +351,7 @@ py_library(
         ":concurrent_log_handler",
         ":blobfile",
         ":partial_json_parser",
+        ":dataclasses-json",
     ],
     data = jit_deps(),
     imports = ["."],

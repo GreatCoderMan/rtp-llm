@@ -6,13 +6,13 @@ import sys
 import traceback
 from functools import partial
 from typing import Any, AsyncGenerator, Dict, List, Optional, Set, Tuple, Union
+from dataclasses import dataclass, field
+import json
 
 from rtp_llm.config.py_config_modules import StaticConfig
 
 current_file_path = pathlib.Path(__file__).parent.absolute()
 sys.path.append(str(current_file_path.parent.absolute()))
-
-from pydantic import BaseModel
 
 from rtp_llm.config.exceptions import ExceptionType, FtRuntimeException
 from rtp_llm.config.generate_config import GenerateConfig
@@ -26,32 +26,160 @@ from rtp_llm.utils.complete_response_async_generator import (
 )
 
 
-class PipelineResponse(BaseModel):
+# Pre-imports for performance
+from dataclasses import asdict, is_dataclass
+from enum import Enum
+
+def _asdict_with_enum_handling(obj, _cache=None):
+    """处理包含枚举的 dataclass 字典转换"""
+    # 使用弱引用缓存来避免循环引用和重复计算
+    if _cache is None:
+        _cache = set()
+
+    obj_id = id(obj)
+    if obj_id in _cache:
+        return obj  # 避免循环引用
+    _cache.add(obj_id)
+
+    try:
+        def convert_enum(value):
+            # 处理各种枚举类型
+            if isinstance(value, Enum):
+                return value.value
+            # 处理嵌套的 dataclass with optimized type check
+            elif is_dataclass(value) and not isinstance(value, (type, type(open))):
+                return _asdict_with_enum_handling(value, _cache)
+            # 递归处理字典 - optimize
+            elif isinstance(value, dict):
+                if not value:
+                    return value
+                return {k: convert_enum(v) for k, v in value.items()}
+            # 递归处理列表 - check for empty
+            elif isinstance(value, list):
+                if not value:
+                    return value
+                return [convert_enum(item) for item in value]
+            elif isinstance(value, tuple):
+                if not value:
+                    return value
+                return tuple(convert_enum(item) for item in value)
+            elif isinstance(value, set):
+                if not value:
+                    return value
+                return {convert_enum(item) for item in value}
+            else:
+                return value
+
+        result = asdict(obj)
+        return {k: convert_enum(v) for k, v in result.items()}
+    finally:
+        _cache.discard(obj_id)
+
+
+# 兼容性装饰器，用于添加 Pydantic 风格的方法
+def add_pydantic_compatibility(cls):
+    """为 dataclass 添加 Pydantic 风格的方法"""
+    def model_dump(self, *args, **kwargs):
+        # 处理 exclude_none 参数
+        result = _asdict_with_enum_handling(self)
+        if kwargs.get('exclude_none'):
+            result = {k: v for k, v in result.items() if v is not None}
+        return result
+
+    def model_dump_json(self, *args, **kwargs):
+        # 处理 exclude_none 参数
+        result = _asdict_with_enum_handling(self)
+        if kwargs.get('exclude_none'):
+            result = {k: v for k, v in result.items() if v is not None}
+            # 过滤掉 exclude_none 参数，避免传递给 json.dumps
+            json_kwargs = {k: v for k, v in kwargs.items() if k != 'exclude_none'}
+            return json.dumps(result, *args, **json_kwargs)
+        return json.dumps(result, *args, **kwargs)
+
+    def dict(self, *args, **kwargs):
+        # 处理 exclude_none 参数
+        result = _asdict_with_enum_handling(self)
+        if kwargs.get('exclude_none'):
+            result = {k: v for k, v in result.items() if v is not None}
+        return result
+
+    def json(self, *args, **kwargs):
+        # 处理 exclude_none 参数
+        result = _asdict_with_enum_handling(self)
+        if kwargs.get('exclude_none'):
+            result = {k: v for k, v in result.items() if v is not None}
+            # 过滤掉 exclude_none 参数，避免传递给 json.dumps
+            json_kwargs = {k: v for k, v in kwargs.items() if k != 'exclude_none'}
+            return json.dumps(result, *args, **json_kwargs)
+        return json.dumps(result, *args, **kwargs)
+
+    cls.model_dump = model_dump
+    cls.model_dump_json = model_dump_json
+    cls.dict = dict
+    cls.json = json
+    return cls
+
+
+def Field(default=None, default_factory=None):
+    if default_factory is not None:
+        return field(default_factory=default_factory)
+    return field(default=default)
+
+
+@add_pydantic_compatibility
+@dataclass
+class PipelineResponse:
     response: str = ""
     finished: bool = True
-    aux_info: Dict[str, Any] = {}
+    aux_info: Dict[str, Any] = None
     hidden_states: Optional[Union[List[float], List[List[float]]]] = None
     loss: Optional[Union[float, List[float]]] = None
     logits: Optional[Union[List[float], List[List[float]]]] = None
     output_ids: Optional[List[List[int]]] = None
     input_ids: Optional[List[List[int]]] = None
 
-
-class MultiSequencesPipelineResponse(BaseModel):
-    response: List[str]
-    finished: bool
-    aux_info: List[Dict[str, Any]] = {}
+    def __post_init__(self):
+        if self.aux_info is None:
+            self.aux_info = {}
 
 
-class BatchPipelineResponse(BaseModel):
-    response_batch: List[Union[PipelineResponse, MultiSequencesPipelineResponse]]
+@add_pydantic_compatibility
+@dataclass
+class MultiSequencesPipelineResponse:
+    response: List[str] = None
+    finished: bool = False
+    aux_info: List[Dict[str, Any]] = None
+
+    def __post_init__(self):
+        if self.response is None:
+            self.response = []
+        if self.aux_info is None:
+            self.aux_info = []
 
 
-class TokenizerEncodeResponse(BaseModel):
-    token_ids: List[int] = []
+@add_pydantic_compatibility
+@dataclass
+class BatchPipelineResponse:
+    response_batch: List[Union[PipelineResponse, MultiSequencesPipelineResponse]] = None
+
+    def __post_init__(self):
+        if self.response_batch is None:
+            self.response_batch = []
+
+
+@add_pydantic_compatibility
+@dataclass
+class TokenizerEncodeResponse:
+    token_ids: List[int] = None
     offset_mapping: Optional[List[Any]] = None
-    tokens: List[str] = []
+    tokens: List[str] = None
     error: str = ""
+
+    def __post_init__(self):
+        if self.token_ids is None:
+            self.token_ids = []
+        if self.tokens is None:
+            self.tokens = []
 
 
 class FrontendWorker:
@@ -167,7 +295,7 @@ class FrontendWorker:
         response = PipelineResponse(
             response=generate_texts[0],
             finished=finished,
-            aux_info=aux_info.model_dump(mode="json"),
+            aux_info=aux_info.dict(exclude_none=True),
             hidden_states=(
                 hidden_states.tolist()
                 if generate_config.return_hidden_states and hidden_states is not None
@@ -202,18 +330,17 @@ class FrontendWorker:
     ) -> Dict[str, Any]:
         generate_texts = gen_responses.generate_texts
         if generate_config.num_return_sequences > 0:
+            # Optimized to avoid list comprehension and reduce allocation overhead
+            seq_outputs = gen_responses.generate_outputs.generate_outputs
+            finished_value = all(seq.finished for seq in seq_outputs)
+            aux_info_list = []
+            for seq in seq_outputs:
+                aux_info_list.append(seq.aux_info.dict(exclude_none=True))
+
             sequences_pipeline_response = MultiSequencesPipelineResponse(
                 response=generate_texts,
-                finished=all(
-                    [
-                        seq.finished
-                        for seq in gen_responses.generate_outputs.generate_outputs
-                    ]
-                ),
-                aux_info=[
-                    seq.aux_info.model_dump(mode="json")
-                    for seq in gen_responses.generate_outputs.generate_outputs
-                ],
+                finished=finished_value,
+                aux_info=aux_info_list,
             )
             return sequences_pipeline_response
         else:
@@ -339,9 +466,10 @@ class FrontendWorker:
             batch_response_incremental_stream = None
             async for response in all_responses:
                 if not batch_response_incremental_stream:
-                    batch_response_incremental_stream = [
-                        [_] for _ in response.response_batch
-                    ]
+                    # Optimized initialization without list comprehension to reduce copy overhead
+                    batch_response_incremental_stream = []
+                    for item in response.response_batch:
+                        batch_response_incremental_stream.append([item])
                 else:
                     for batch_idx, single_response in enumerate(
                         response.response_batch
@@ -374,8 +502,13 @@ class FrontendWorker:
             complete_multi_seq_aux_info = None
             async for response in all_responses:
                 if not complete_multi_seq_response:
-                    complete_multi_seq_response = [_ for _ in response.response]
-                    complete_multi_seq_aux_info = [_ for _ in response.aux_info]
+                    # Optimized initialization without list comprehension to reduce copy overhead
+                    complete_multi_seq_response = []
+                    for item in response.response:
+                        complete_multi_seq_response.append(item)
+                    complete_multi_seq_aux_info = []
+                    for item in response.aux_info:
+                        complete_multi_seq_aux_info.append(item)
                     complete_multi_seq_finished = response.finished
                 for seq_idx, seq_reponse in enumerate(response.response):
                     complete_multi_seq_response[seq_idx] = (

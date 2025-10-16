@@ -7,7 +7,6 @@ from typing import Any, Callable, Dict, Union
 from fastapi import Request
 from fastapi import Request as RawRequest
 from fastapi.responses import ORJSONResponse, StreamingResponse
-from pydantic import BaseModel
 
 from rtp_llm.access_logger.access_logger import AccessLogger
 from rtp_llm.config.generate_config import RoleType
@@ -312,11 +311,9 @@ class FrontendServer(object):
         self, req: Dict[Any, Any], res: Any
     ):
         complete_response = await res.gen_complete_response_once()
-        complete_response = (
-            complete_response.model_dump(exclude_none=True)
-            if isinstance(complete_response, BaseModel)
-            else complete_response
-        )
+        # Check if response has model_dump method (dataclass with our compatibility decorator)
+        if hasattr(complete_response, 'model_dump'):
+            complete_response = complete_response.model_dump(exclude_none=True)
         self._access_logger.log_success_access(req, complete_response)
 
         return complete_response

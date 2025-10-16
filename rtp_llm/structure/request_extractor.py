@@ -36,7 +36,11 @@ class RequestExtractor:
         return request, remain_args
 
     @staticmethod
-    def is_streaming(req: Dict[str, Any]):
+    def is_streaming(req: Union[Dict[str, Any], List[Any], object]):
+        # If req is a list or otherwise can't be treated as dict, return False
+        if not isinstance(req, dict):
+            return False
+
         return req.get(
             "yield_generator",
             req.get("generation_config", req.get("generate_config", {})).get(

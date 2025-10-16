@@ -2,8 +2,9 @@ import copy
 import hashlib
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
+from dataclasses import dataclass, field, asdict
+import json
 
-from pydantic import BaseModel
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 from rtp_llm.config.exceptions import ExceptionType, FtRuntimeException
@@ -25,14 +26,69 @@ class RoleType(Enum):
     FRONTEND = 4
 
 
-class RoleAddr(BaseModel):
+@dataclass
+class RoleAddr:
     role: RoleType
     ip: str
     http_port: int
     grpc_port: int
 
+    def __post_init__(self):
+        # 确保字段类型正确
+        if isinstance(self.role, str):
+            self.role = RoleType[self.role]
+        if not isinstance(self.ip, str):
+            self.ip = str(self.ip)
+        if not isinstance(self.http_port, int):
+            self.http_port = int(self.http_port)
+        if not isinstance(self.grpc_port, int):
+            self.grpc_port = int(self.grpc_port)
 
-class GenerateConfig(BaseModel):
+    def _asdict_with_enum_handling(self):
+        """处理包含枚举的 dataclass 字典转换"""
+        from dataclasses import asdict
+
+        def convert_enum(value):
+            if isinstance(value, RoleType):
+                return value.value
+            elif isinstance(value, dict):
+                return {k: convert_enum(v) for k, v in value.items()}
+            elif isinstance(value, list):
+                return [convert_enum(item) for item in value]
+            else:
+                return value
+
+        result = asdict(self)
+        return {k: convert_enum(v) for k, v in result.items()}
+
+    # 兼容性方法
+    def dict(self, *args, **kwargs):
+        # 处理 exclude_none 参数
+        result = self._asdict_with_enum_handling()
+        if kwargs.get('exclude_none'):
+            result = {k: v for k, v in result.items() if v is not None}
+        return result
+
+    def model_dump(self, *args, **kwargs):
+        return self.dict(*args, **kwargs)
+
+    def json(self, *args, **kwargs):
+        import json
+        # 处理 exclude_none 参数
+        result = self._asdict_with_enum_handling()
+        if kwargs.get('exclude_none'):
+            result = {k: v for k, v in result.items() if v is not None}
+            # 过滤掉 exclude_none 参数，避免传递给 json.dumps
+            json_kwargs = {k: v for k, v in kwargs.items() if k != 'exclude_none'}
+            return json.dumps(result, *args, **json_kwargs)
+        return json.dumps(result, *args, **kwargs)
+
+    def model_dump_json(self, *args, **kwargs):
+        return self.json(*args, **kwargs)
+
+
+@dataclass
+class GenerateConfig:
     max_new_tokens: int = 32000
     # only for qwen agent fncall check max input tokens
     max_input_tokens: int = 32000
@@ -41,27 +97,27 @@ class GenerateConfig(BaseModel):
         False  # same as `enable_thinking` in chat_template_kwargs, discard one in the future
     )
     chat_template_kwargs: Optional[Dict[str, Any]] = None
-    end_think_token_ids: List[int] = []
+    end_think_token_ids: List[int] = field(default_factory=list)
     num_beams: int = 1
-    variable_num_beams: List[int] = []
+    variable_num_beams: List[int] = field(default_factory=list)
     do_sample: bool = True
     # 0 mean not use num_return_sequences,
     # whether to enable num_return_sequences, the output format of the results is inconsistent.
     num_return_sequences: int = 0
-    top_k: Union[List[int], int] = 0
-    top_p: Union[List[float], float] = 1.0
-    temperature: Union[List[float], float] = 1.0
-    repetition_penalty: Union[List[float], float] = 1.0
-    presence_penalty: Union[List[float], float] = 0.0
-    frequency_penalty: Union[List[float], float] = 0.0
-    min_new_tokens: Union[List[int], int] = 0
+    top_k: Union[List[int], int] = field(default_factory=lambda: 0)
+    top_p: Union[List[float], float] = field(default_factory=lambda: 1.0)
+    temperature: Union[List[float], float] = field(default_factory=lambda: 1.0)
+    repetition_penalty: Union[List[float], float] = field(default_factory=lambda: 1.0)
+    presence_penalty: Union[List[float], float] = field(default_factory=lambda: 0.0)
+    frequency_penalty: Union[List[float], float] = field(default_factory=lambda: 0.0)
+    min_new_tokens: Union[List[int], int] = field(default_factory=lambda: 0)
     no_repeat_ngram_size: Optional[Union[List[int], int]] = None
     random_seed: Optional[Union[List[int], int]] = None
     top_p_decay: Optional[Union[List[float], float]] = None
     top_p_min: Optional[Union[List[float], float]] = None
     top_p_reset_ids: Optional[Union[List[int], int]] = None
-    stop_words_str: List[str] = []
-    stop_words_list: List[List[int]] = []
+    stop_words_str: List[str] = field(default_factory=list)
+    stop_words_list: List[List[int]] = field(default_factory=list)
     bad_words_list: Optional[Union[List[List[List[int]]], List[List[int]]]] = None
     eos_token_id: Optional[Union[List[int], int]] = None
     pad_token_id: Optional[Union[List[int], int]] = None
@@ -83,14 +139,14 @@ class GenerateConfig(BaseModel):
     return_all_hidden_states: bool = False
     hidden_states_cut_dim: int = 0
     normalized_hidden_states: bool = False
-    select_tokens_str: List[str] = []
-    select_tokens_id: List[int] = []
+    select_tokens_str: List[str] = field(default_factory=list)
+    select_tokens_id: List[int] = field(default_factory=list)
     return_input_ids: bool = False
     return_output_ids: bool = False
     md5_value: str = ""
     custom_prop: str = "{}"
     sp_advice_prompt: str = ""
-    sp_advice_prompt_token_ids: List[int] = []
+    sp_advice_prompt_token_ids: List[int] = field(default_factory=list)
     sp_edit: bool = False
     force_disable_sp_run: bool = False
     force_sp_accept: bool = False
@@ -102,7 +158,7 @@ class GenerateConfig(BaseModel):
     profile_step: int = 3
     out_prefix: str = ""
     # for load balance
-    role_addrs: List[RoleAddr] = []
+    role_addrs: List[RoleAddr] = field(default_factory=list)
     trace_id: str = ""
 
     # inter request id, from master
@@ -130,6 +186,105 @@ class GenerateConfig(BaseModel):
 
     # 只有开启环境变量 ENABLE_3FS 时才生效
     enable_3fs: bool = True
+
+    def __post_init__(self):
+        # 处理 None 值和类型转换
+        if self.chat_template_kwargs is None:
+            self.chat_template_kwargs = {}
+        if self.end_think_token_ids is None:
+            self.end_think_token_ids = []
+        if self.variable_num_beams is None:
+            self.variable_num_beams = []
+        if self.no_repeat_ngram_size is None:
+            self.no_repeat_ngram_size = None
+        if self.random_seed is None:
+            self.random_seed = None
+        if self.top_p_decay is None:
+            self.top_p_decay = None
+        if self.top_p_min is None:
+            self.top_p_min = None
+        if self.top_p_reset_ids is None:
+            self.top_p_reset_ids = None
+        if self.stop_words_str is None:
+            self.stop_words_str = []
+        if self.stop_words_list is None:
+            self.stop_words_list = []
+        if self.bad_words_list is None:
+            self.bad_words_list = None
+        if self.eos_token_id is None:
+            self.eos_token_id = None
+        if self.pad_token_id is None:
+            self.pad_token_id = None
+        if self.bos_token_id is None:
+            self.bos_token_id = None
+        if self.chat_id is None:
+            self.chat_id = None
+        if self.task_id is None:
+            self.task_id = None
+        if self.logits_index is None:
+            self.logits_index = None
+        if self.bad_words_list is None:
+            self.bad_words_list = None
+        if self.bos_token_id is None:
+            self.bos_token_id = None
+        if self.select_tokens_str is None:
+            self.select_tokens_str = []
+        if self.select_tokens_id is None:
+            self.select_tokens_id = []
+        if self.sp_advice_prompt_token_ids is None:
+            self.sp_advice_prompt_token_ids = []
+        if self.resized_shape is None:
+            self.resized_shape = None
+        if self.adapter_name is None:
+            self.adapter_name = None
+
+    def _asdict_with_enum_handling(self):
+        """处理包含枚举的 dataclass 字典转换"""
+        from dataclasses import asdict
+
+        def convert_enum(value):
+            # 处理 RoleType 枚举
+            if isinstance(value, RoleType):
+                return value.value
+            # 处理嵌套的 dataclass（如 RoleAddr）
+            elif hasattr(value, '_asdict_with_enum_handling'):
+                return value._asdict_with_enum_handling()
+            # 递归处理字典
+            elif isinstance(value, dict):
+                return {k: convert_enum(v) for k, v in value.items()}
+            # 递归处理列表
+            elif isinstance(value, list):
+                return [convert_enum(item) for item in value]
+            else:
+                return value
+
+        result = asdict(self)
+        return {k: convert_enum(v) for k, v in result.items()}
+
+    # 兼容性方法
+    def dict(self, *args, **kwargs):
+        # 处理 exclude_none 参数
+        result = self._asdict_with_enum_handling()
+        if kwargs.get('exclude_none'):
+            result = {k: v for k, v in result.items() if v is not None}
+        return result
+
+    def model_dump(self, *args, **kwargs):
+        return self.dict(*args, **kwargs)
+
+    def json(self, *args, **kwargs):
+        import json
+        # 处理 exclude_none 参数
+        result = self._asdict_with_enum_handling()
+        if kwargs.get('exclude_none'):
+            result = {k: v for k, v in result.items() if v is not None}
+            # 过滤掉 exclude_none 参数，避免传递给 json.dumps
+            json_kwargs = {k: v for k, v in kwargs.items() if k != 'exclude_none'}
+            return json.dumps(result, *args, **json_kwargs)
+        return json.dumps(result, *args, **kwargs)
+
+    def model_dump_json(self, *args, **kwargs):
+        return self.json(*args, **kwargs)
 
     def gen_hash_value(self):
         cp = copy.copy(self)

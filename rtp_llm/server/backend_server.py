@@ -104,10 +104,20 @@ class BackendServer(object):
         return "unknown" if self.model is None else self.model.model_runtime_meta
 
     def stop(self) -> None:
-        if isinstance(self.model, AsyncModel):
-            _nfs_manager.unmount_all()
-            logging.info("all nfs paths unmounted")
-            self.model.stop()
+        try:
+            logging.info(f"BackendServer.stop() called, self.model type: {type(self.model)}")
+            if isinstance(self.model, AsyncModel):
+                _nfs_manager.unmount_all()
+                logging.info("all nfs paths unmounted")
+                logging.info("calling self.model.stop()")
+                self.model.stop()
+                logging.info("self.model.stop() completed successfully")
+            else:
+                logging.warning(f"self.model is not AsyncModel: type={type(self.model)}")
+            logging.info("BackendServer.stop() completed")
+        except Exception as e:
+            logging.error(f"Exception in BackendServer.stop(): {e}")
+            raise
 
     def ready(self):
         if isinstance(self.model, AsyncModel):

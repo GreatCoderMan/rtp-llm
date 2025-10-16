@@ -143,7 +143,7 @@ size_t CacheManager::availableBlockNums() {
     return available_blocks_;
 }
 
-KVCacheInfo CacheManager::getKVCacheInfo(int64_t latest_version, bool need_cache_keys) const {
+KVCacheInfo CacheManager::getKVCacheInfo(int64_t latest_version, bool need_cache_keys) {
     auto                 snapshot = block_cache_.cacheSnapshot(latest_version);
     std::vector<int64_t> cachekeys;
     if (need_cache_keys) {

@@ -735,6 +735,7 @@ class GptInitModelParameters:
             enable_fast_gen=get_env_bool("ENABLE_FAST_GEN", False),
             enable_partial_fallback=get_env_bool("ENABLE_PARTIAL_FALLBACK", False),
             fast_gen_context_budget=get_env_int("FAST_GEN_MAX_CONTEXT_LEN", 0),
+            preallocate_blocks=get_env_int("PREALLOCATE_BLOCKS", 1),
         )
 
         # SamplerConfig
@@ -1114,12 +1115,6 @@ class GptInitModelParameters:
         )
         logging.info(
             f"scheduler_reserve_resource_ratio: {self.scheduler_reserve_resource_ratio}"
-        )
-        self.preallocate_blocks = int(
-            os.environ.get("PREALLOCATE_BLOCKS", 1)
-        )
-        logging.info(
-            f"preallocate_blocks: {self.preallocate_blocks}"
         )
 
         self.reuse_cache = self.py_env_configs.py_kv_cache_config.reuse_cache

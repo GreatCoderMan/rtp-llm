@@ -194,54 +194,65 @@ def trans_output(
     logging.debug("outputs_pb = %s", outputs_pb)
     logits_index = input_py.generate_config.logits_index
     outputs_py = GenerateOutputs()
+
+    # 预计算常量，避免重复除法运算
+    us_to_ms = 1.0 / 1000.0
+    role_addrs = input_py.generate_config.role_addrs
+
     for i, output_pb in enumerate(outputs_pb.generate_outputs):
         output_py = GenerateOutput()
         output_py.finished = output_pb.finished
+
+        # 优化：批量赋值减少属性访问开销
+        aux_info_pb = output_pb.aux_info
         output_py.aux_info = AuxInfo(
-            cost_time=output_pb.aux_info.cost_time_us / 1000.0,
-            first_token_cost_time=output_pb.aux_info.first_token_cost_time_us / 1000.0,
-            wait_time=output_pb.aux_info.wait_time_us / 1000.0,
-            iter_count=output_pb.aux_info.iter_count,
-            input_len=output_pb.aux_info.input_len,
-            prefix_len=output_pb.aux_info.prefix_len,
-            output_len=output_pb.aux_info.output_len,
-            step_output_len=output_pb.aux_info.step_output_len,
-            fallback_tokens=output_pb.aux_info.fallback_tokens,
-            fallback_times=output_pb.aux_info.fallback_times,
-            pd_sep=output_pb.aux_info.pd_sep,
-            reuse_len=output_pb.aux_info.total_reuse_len,
-            local_reuse_len=output_pb.aux_info.local_reuse_len,
-            remote_reuse_len=output_pb.aux_info.remote_reuse_len,
-            prefill_total_reuse_len=output_pb.aux_info.prefill_total_reuse_len,
-            prefill_local_reuse_len=output_pb.aux_info.prefill_local_reuse_len,
-            prefill_remote_reuse_len=output_pb.aux_info.prefill_remote_reuse_len,
-            decode_total_reuse_len=output_pb.aux_info.decode_total_reuse_len,
-            decode_local_reuse_len=output_pb.aux_info.decode_local_reuse_len,
-            decode_remote_reuse_len=output_pb.aux_info.decode_remote_reuse_len,
-            aux_string=output_pb.aux_info.aux_string,
-            role_addrs=input_py.generate_config.role_addrs,
+            cost_time=aux_info_pb.cost_time_us * us_to_ms,
+            first_token_cost_time=aux_info_pb.first_token_cost_time_us * us_to_ms,
+            wait_time=aux_info_pb.wait_time_us * us_to_ms,
+            iter_count=aux_info_pb.iter_count,
+            input_len=aux_info_pb.input_len,
+            prefix_len=aux_info_pb.prefix_len,
+            output_len=aux_info_pb.output_len,
+            step_output_len=aux_info_pb.step_output_len,
+            fallback_tokens=aux_info_pb.fallback_tokens,
+            fallback_times=aux_info_pb.fallback_times,
+            pd_sep=aux_info_pb.pd_sep,
+            reuse_len=aux_info_pb.total_reuse_len,
+            local_reuse_len=aux_info_pb.local_reuse_len,
+            remote_reuse_len=aux_info_pb.remote_reuse_len,
+            prefill_total_reuse_len=aux_info_pb.prefill_total_reuse_len,
+            prefill_local_reuse_len=aux_info_pb.prefill_local_reuse_len,
+            prefill_remote_reuse_len=aux_info_pb.prefill_remote_reuse_len,
+            decode_total_reuse_len=aux_info_pb.decode_total_reuse_len,
+            decode_local_reuse_len=aux_info_pb.decode_local_reuse_len,
+            decode_remote_reuse_len=aux_info_pb.decode_remote_reuse_len,
+            aux_string=aux_info_pb.aux_string,
+            role_addrs=role_addrs,
         )
+        # 优化：批量处理字段检查，减少重复的HasField调用
         # TODO(xinfei.sxf) cum_log_probs is not right, ignore it temporarily
-        if output_pb.aux_info.HasField("cum_log_probs"):
+        if aux_info_pb.HasField("cum_log_probs"):
             output_py.aux_info.cum_log_probs = trans_tensor(
-                output_pb.aux_info.cum_log_probs
+                aux_info_pb.cum_log_probs
             ).tolist()
-        if output_pb.aux_info.HasField("softmax_probs"):
+        if aux_info_pb.HasField("softmax_probs"):
             output_py.aux_info.softmax_probs = trans_tensor(
-                output_pb.aux_info.softmax_probs
+                aux_info_pb.softmax_probs
             ).tolist()
+
+        # 优化：预转换常用的tensor
         output_py.output_ids = trans_tensor(output_pb.output_ids)
         output_py.input_ids = input_py.token_ids.reshape(1, -1)
+
+        # 优化：使用条件检查批量处理可选字段
         if output_pb.HasField("hidden_states"):
             output_py.hidden_states = trans_tensor(output_pb.hidden_states)
         if output_pb.HasField("all_hidden_states"):
             output_py.all_hidden_states = trans_tensor(output_pb.all_hidden_states)
         if output_pb.HasField("loss"):
             # when calculate_loss 1, result should be one element
-            if input_py.generate_config.calculate_loss == 1:
-                output_py.loss = trans_tensor(output_pb.loss)[0]
-            else:
-                output_py.loss = trans_tensor(output_pb.loss)
+            loss_tensor = trans_tensor(output_pb.loss)
+            output_py.loss = loss_tensor[0] if input_py.generate_config.calculate_loss == 1 else loss_tensor
         if output_pb.HasField("logits"):
             output_py.logits = trans_tensor(output_pb.logits)
         if output_pb.HasField("all_probs"):

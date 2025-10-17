@@ -96,33 +96,39 @@ def truncate_response_with_stop_words(
     is_streaming: bool = True,
     slice: bool = False,
 ):
+    # 优化：预先过滤空的stop words，避免重复检查
+    valid_stop_words = [sw for sw in stop_word_strs if sw]
+    if not valid_stop_words or not response:
+        return response
 
     if is_streaming:
-        first_pos = len(response)
-        for stop_word in stop_word_strs:
-            if stop_word:
-                if slice:
-                    if response.endswith(stop_word):
-                        response = response[: (-len(stop_word))]
-                        break
-                else:
-                    pos = response.find(stop_word)
-                    if pos == 0:
-                        first_pos = 0
-                        break
-                    if pos != -1 and pos < first_pos:
-                        first_pos = pos
-        response = response[:first_pos]
+        if slice:
+            # 优化：对于slice模式，从最长的stop word开始检查
+            for stop_word in sorted(valid_stop_words, key=len, reverse=True):
+                if response.endswith(stop_word):
+                    return response[:-len(stop_word)]
+            return response
+        else:
+            # 优化：使用更高效的单次遍历查找最早位置
+            first_pos = len(response)
+            for stop_word in valid_stop_words:
+                pos = response.find(stop_word)
+                if pos == 0:
+                    return ""  # 立即返回，避免后续处理
+                if pos != -1 and pos < first_pos:
+                    first_pos = pos
+            return response[:first_pos]
     else:
+        # 优化：非流式模式，找到最小位置
         min_index = len(response)
-        for stop_word in stop_word_strs:
-            if stop_word:
-                index = response.find(stop_word)
-                if index != -1 and index < min_index:
-                    min_index = index
-        if min_index != len(response):
-            response = response[:min_index]
-    return response
+        for stop_word in valid_stop_words:
+            index = response.find(stop_word)
+            if index != -1 and index < min_index:
+                min_index = index
+                # 优化：如果找到了开头就立即返回
+                if min_index == 0:
+                    return ""
+        return response[:min_index] if min_index != len(response) else response
 
 
 def truncate_token_with_stop_word_id(tokens: List[int], stop_word_ids: List[int]):

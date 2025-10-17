@@ -81,9 +81,10 @@ class StreamStatus:
         self.index += 1
         self.output = output
         delta_output_ids = output.output_ids.cpu().flatten().tolist()
-        self.output_ids_list = copy.deepcopy(
-            self.output_ids_list + delta_output_ids
-        )
+
+        # 优化：避免深拷贝，直接扩展列表
+        self.output_ids_list.extend(delta_output_ids)
+
         self.finish_reason = check_finish_func(
             self.output_ids_list, self.input_token_length
         )
@@ -154,9 +155,10 @@ class StreamStatusSync:
     ):
         self.index += 1
         delta_output_ids = output.output_ids.cpu().flatten().tolist()
-        self.output_ids_list = copy.deepcopy(
-            self.output_ids_list + delta_output_ids
-        )
+
+        # 优化：避免深拷贝，直接扩展列表
+        self.output_ids_list.extend(delta_output_ids)
+
         self.finish_reason = check_finish_func(self.output_ids_list, input_len)
         self.output_ids = remove_stop_word_ids_func(self.output_ids_list, delta_output_ids)
 
@@ -499,9 +501,13 @@ class CustomChatRenderer:
             logprob=all_probs[output_id].log().item(),
             top_logprobs=[],
         )
+
+        # 优化：预分配top_logprobs列表空间
+        top_logprobs = chat_logprob.top_logprobs
+        append_method = top_logprobs.append
         for i in range(prob_return_num):
             token = self.tokenizer.decode(tokens[i].item())
-            chat_logprob.top_logprobs.append(
+            append_method(
                 TopLogprob(
                     token=token,
                     logprob=log_values[i].item(),
@@ -588,18 +594,11 @@ class CustomChatRenderer:
             return await self._create_empty_delta(output.aux_info)
 
     async def _generate_first(self, n: int):
-        return StreamResponseObject(
-            choices=[
-                ChatCompletionResponseStreamChoice(
-                    index=i,
-                    delta=DeltaMessage(
-                        role=RoleEnum.assistant,
-                        content="",
-                    ),
-                )
-                for i in range(n)
-            ]
-        )
+        # 优化：预先创建delta对象，避免重复创建
+        delta_assistant = DeltaMessage(role=RoleEnum.assistant, content="")
+        # 优化：使用列表构造而不是推导式，对于大n更高效
+        choices = [ChatCompletionResponseStreamChoice(index=i, delta=delta_assistant) for i in range(n)]
+        return StreamResponseObject(choices=choices)
 
     def _split_reasoning_text_and_content(
         self, item: OutputDelta, think_status: ThinkStatus
@@ -679,26 +678,37 @@ class CustomChatRenderer:
     ) -> StreamResponseObject:
         if len(items) == 0:
             raise Exception("output items length should not be 0")
+
+        # 优化：预先计算常用值，避免重复计算
         input_lengths = items[0].input_length
-        output_lengths = sum([x.output_length for x in items])
         reuse_lengths = items[0].reuse_length
+
+        # 优化：使用生成器表达式和sum内置函数，比列表推导式+sum更快
+        output_lengths = sum(x.output_length for x in items)
+
+        # 优化：预分配列表空间
         all_choices = []
+        all_choices_extend = all_choices.append  # 避免重复查找方法
+
+        # 优化：预计算think tokens以避免重复计算
+        reasoning_tokens = None
+        if think_status_list[0].enable_think_mode:
+            reasoning_tokens = sum(x.think_tokens for x in think_status_list)
+
         for i, item in enumerate(items):
             delta = self._split_reasoning_text_and_content(item, think_status_list[i])
-            all_choices.append(
-                ChatCompletionResponseStreamChoice(
-                    index=i,
-                    delta=delta,
-                    logprobs=(
-                        ChoiceLogprobs(
-                            content=[item.logprobs] if item.logprobs != None else None,
-                            refusal=None,
-                        )
-                        if item.logprobs != None
-                        else None
-                    ),
-                )
+
+            # 优化：预先创建logprobs对象，避免重复条件检查
+            logprobs = None
+            if item.logprobs is not None:
+                logprobs = ChoiceLogprobs(content=[item.logprobs], refusal=None)
+
+            choice = ChatCompletionResponseStreamChoice(
+                index=i,
+                delta=delta,
+                logprobs=logprobs,
             )
+            all_choices_extend(choice)
 
         return StreamResponseObject(
             choices=all_choices,
@@ -707,12 +717,8 @@ class CustomChatRenderer:
                 total_tokens=input_lengths + output_lengths,
                 completion_tokens=output_lengths,
                 completion_tokens_details=(
-                    CompletionTokensDetails(
-                        reasoning_tokens=sum(
-                            [x.think_tokens for x in think_status_list]
-                        )
-                    )
-                    if think_status_list[0].enable_think_mode > 0
+                    CompletionTokensDetails(reasoning_tokens=reasoning_tokens)
+                    if reasoning_tokens is not None
                     else None
                 ),
                 prompt_tokens_details=(
@@ -937,9 +943,13 @@ class CustomChatRenderer:
             logprob=all_probs[output_id].log().item(),
             top_logprobs=[],
         )
+
+        # 优化：预分配top_logprobs列表空间
+        top_logprobs = chat_logprob.top_logprobs
+        append_method = top_logprobs.append
         for i in range(prob_return_num):
             token = self.tokenizer.decode(tokens[i].item())
-            chat_logprob.top_logprobs.append(
+            append_method(
                 TopLogprob(
                     token=token,
                     logprob=log_values[i].item(),

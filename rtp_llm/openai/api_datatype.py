@@ -23,29 +23,31 @@ def _asdict_with_enum_handling(obj, _cache=None):
     _cache.add(obj_id)
 
     try:
+        # 预编译类型检查以提高性能 - 优化枚举检查
         def convert_enum(value):
-            # 处理各种枚举类型
-            if isinstance(value, Enum):
+            value_type = type(value)
+            # 优化：使用更快的枚举类型检查
+            if value_type.__mro__[-2] is Enum or hasattr(value_type, '__members__'):
                 return value.value
-            # 处理嵌套的 dataclass
-            elif is_dataclass(value) and not isinstance(value, (type, type(open))):  # Optimized type check
+            # 优化：使用 __dataclass_fields__ 属性检查，避免调用 is_dataclass
+            elif hasattr(value, '__dataclass_fields__') and not isinstance(value, (type, type(str))):
                 return _asdict_with_enum_handling(value, _cache)
-            # 递归处理字典 - optimize with generator
+            # 优化：对字典进行微优化
             elif isinstance(value, dict):
+                if not value:
+                    return value
+                # 使用 items() 直接迭代，避免创建中间列表
                 return {k: convert_enum(v) for k, v in value.items()}
-            # 递归处理列表 - use list comprehension
+            # 优化：对列表进行微优化
             elif isinstance(value, list):
-                # Check if list is empty to optimize
                 if not value:
                     return value
                 return [convert_enum(item) for item in value]
             elif isinstance(value, tuple):
-                # 优化：保持tuple类型 - use generator
                 if not value:
                     return value
                 return tuple(convert_enum(item) for item in value)
             elif isinstance(value, set):
-                # 处理set类型
                 if not value:
                     return value
                 return {convert_enum(item) for item in value}
@@ -53,7 +55,8 @@ def _asdict_with_enum_handling(obj, _cache=None):
                 return value
 
         result = asdict(obj)
-        # Process the result dictionary efficiently
+        if not result:
+            return result
         return {k: convert_enum(v) for k, v in result.items()}
     finally:
         _cache.discard(obj_id)

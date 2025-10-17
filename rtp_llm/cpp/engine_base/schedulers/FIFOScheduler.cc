@@ -246,7 +246,7 @@ bool FIFOScheduler::evaluateNewStream(const list<GenerateStreamPtr>& streams,
         if (cache_manager_->availableBlockNums() >= reserve_block_num_) {
             return true;
         } else {
-            RTP_LLM_LOG_INFO("current availableBlockNums is [%d], reserve_block_num is [%d], so stream [%d] malloc failed",
+            RTP_LLM_LOG_INFO("current availableBlockNums is [%ld], reserve_block_num is [%ld], so stream [%ld] malloc failed",
                 cache_manager_->availableBlockNums(), reserve_block_num_, new_stream->streamId());
             new_stream->tryReleaseKVBlock(new_stream->maxBlockSize() - old_blocks);
             return false;

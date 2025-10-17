@@ -92,7 +92,7 @@ void CacheManager::reportMetricsLoop() {
             {
                 std::lock_guard<std::mutex> guard(mutex_);
                 collector.kv_cache_item_num         = block_cache_.size();
-                auto available_blocks               = availableBlockNums();
+                auto available_blocks               = availableBlockNumsWithoutLock();
                 collector.kv_cache_left_seq         = available_blocks * seq_size_per_block_;
                 collector.kv_cache_available_blocks = available_blocks;
                 collector.kv_cache_free_blocks      = freeBlockNums();
@@ -140,6 +140,10 @@ size_t CacheManager::freeBlockNums() const {
 
 size_t CacheManager::availableBlockNums() {
     std::lock_guard<std::mutex> guard(mutex_);
+    return available_blocks_;
+}
+
+size_t CacheManager::availableBlockNumsWithoutLock() {
     return available_blocks_;
 }
 

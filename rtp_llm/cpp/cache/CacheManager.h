@@ -145,6 +145,7 @@ protected:
     void               initFreeBlock();
     rtp_llm::BufferPtr tryAllocateMaxBuffer();
     void               allocateAndSync();
+    size_t             availableBlockNumsWithoutLock();
 
     MatchInfo                          matchImpl(const AdvancedMallocInfo& malloc_info);
     std::tuple<bool, std::vector<int>> mallocIndex(const KVCacheAllocator::SimpleMallocInfo& malloc_info);

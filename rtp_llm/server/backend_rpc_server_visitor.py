@@ -233,8 +233,10 @@ class BackendRPCServerVisitor:
 
         if self.host_service.service_available:
             await self.route_ips(input)
-
-        return self.model_rpc_client.enqueue(input)
+        import time
+        logging.warning(f"GenerateStreamCall begin time: {time.time()*1000}")
+        out = self.model_rpc_client.enqueue(input)
+        return out
 
     def is_backend_service_ready(self, refresh: bool = False) -> bool:
         roles: List[RoleAddr] = self.host_service.get_backend_role_addrs(

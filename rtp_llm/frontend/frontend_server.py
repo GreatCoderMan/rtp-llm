@@ -354,7 +354,9 @@ class FrontendServer(object):
             return StreamingResponse(
                 self.stream_response(req, res), media_type="text/event-stream"
             )
+        import time
         async for x in res:
+            logging.warning(f"GenerateStreamCall end time: {time.time()*1000}")
             if await raw_request.is_disconnected():
                 # Abort the request if the client disconnects.
                 await res.aclose()
@@ -363,6 +365,7 @@ class FrontendServer(object):
         complete_response = await self._collect_complete_response_and_record_access_log(
             req, res
         )
+        logging.warning(f"ORJSONResponse time: {time.time()*1000}")
         return ORJSONResponse(content=complete_response)
 
     def tokenize(self, req: str | Dict[str, Any]):

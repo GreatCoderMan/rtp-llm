@@ -154,7 +154,7 @@ class StreamStatusSync:
         remove_stop_word_ids_func,
     ):
         self.index += 1
-        delta_output_ids = output.output_ids.cpu().flatten().tolist()
+        delta_output_ids = output_ids.cpu().flatten().tolist()
 
         # 优化：避免深拷贝，直接扩展列表
         self.output_ids_list.extend(delta_output_ids)

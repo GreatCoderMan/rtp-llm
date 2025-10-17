@@ -240,6 +240,7 @@ class GptInitModelParameters:
     decode_polling_kv_cache_step_ms: int
     decode_retry_timeout_ms: int
     decode_retry_times: int
+    decode_retry_interval: int
     deepseek_mscale_all_dim: float
     deepseek_rope_mscale: float
     dp_rank: int
@@ -1085,6 +1086,10 @@ class GptInitModelParameters:
                 self.py_env_configs.pd_separation_config.decode_retry_timeout_ms
             )
             logging.info(f"decode_retry_timeout_ms: {self.decode_retry_timeout_ms}")
+            self.decode_retry_interval_ms = (
+                self.py_env_configs.pd_separation_config.decode_retry_interval_ms
+            )
+            logging.info(f"decode_retry_interval_ms: {self.decode_retry_interval_ms}")
 
             self.rdma_connect_retry_times = (
                 self.py_env_configs.pd_separation_config.rdma_connect_retry_times

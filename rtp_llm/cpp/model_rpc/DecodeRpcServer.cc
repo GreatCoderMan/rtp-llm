@@ -734,10 +734,11 @@ grpc::Status DecodeRpcServer::RemoteGenerate(grpc::ServerContext* server_context
 
     auto max_retry_times      = maga_init_params_.gpt_init_parameter.decode_retry_times_;
     auto max_retry_timeout_ms = maga_init_params_.gpt_init_parameter.decode_retry_timeout_ms_;
+    auto retry_interval_ms    = maga_init_params_.gpt_init_parameter.decode_retry_interval_ms_;
 
     try {
         EXECUTE_STAGE_FUNC(prepareGenerateContext, decode_context);
-        EXECUTE_WITH_RETRY(allocateResourceFunc, decode_context, max_retry_times, max_retry_timeout_ms);
+        EXECUTE_WITH_RETRY(allocateResourceFunc, decode_context, max_retry_times, max_retry_timeout_ms, retry_interval_ms);
         if (decode_context.hasError()) {
             RTP_LLM_LOG_WARNING("request [%s] allocate resource failed after retry %d times, cost time ms [%ld], "
                                 "max retry time [%ld], max retry timeout ms [%ld]",

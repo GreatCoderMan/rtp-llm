@@ -628,6 +628,7 @@ class EmbeddingConfig:
     def __init__(self):
         self.embedding_model: int = 0
         self.extra_input_in_mm_embedding = ""
+        self.embedding_need_norm: bool = True
 
     def update_from_env(self):
         self.embedding_model = int(
@@ -636,11 +637,15 @@ class EmbeddingConfig:
         self.extra_input_in_mm_embedding = os.environ.get(
             "EXTRA_INPUT_IN_MM_EMBEDDING", self.extra_input_in_mm_embedding
         )
+        self.embedding_need_norm = get_env_bool(
+            "EMBEDDING_NEED_NORM", self.embedding_need_norm
+        )
 
     def to_string(self):
         return (
             f"embedding_model: {self.embedding_model}\n"
-            f"extra_input_in_mm_embedding: {self.extra_input_in_mm_embedding}"
+            f"extra_input_in_mm_embedding: {self.extra_input_in_mm_embedding}\n"
+            f"embedding_need_norm: {self.embedding_need_norm}"
         )
 
 

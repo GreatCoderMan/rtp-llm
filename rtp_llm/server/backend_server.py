@@ -5,7 +5,8 @@ import os
 import threading
 import time
 from typing import Any, Dict, List, Union
-
+import numpy as np
+import base64
 import requests
 import torch
 from fastapi import Request
@@ -152,6 +153,11 @@ class BackendServer(object):
                 {"source": request.get("source", "unknown")},
             )
             usage = result.get("usage", {})
+            for data in result['data']:
+                hidden_states_array = np.array(data['embedding'])
+                logging.warning(f"hidden_states_array shape : {hidden_states_array.shape}")
+                hidden_states_base64 = base64.b64encode(hidden_states_array.tobytes()).decode('ascii')
+                data['embedding'] = hidden_states_base64
             if not isinstance(usage, dict):
                 usage = {}
             return ORJSONResponse(result, headers={USAGE_HEADER: json.dumps(usage)})

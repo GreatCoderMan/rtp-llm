@@ -322,6 +322,7 @@ class FrontendServer(object):
         all_hidden_states = complete_response.get('extra_outputs', {}).get('all_hidden_states')
         if all_hidden_states is not None:
             all_hidden_states_array = np.array(all_hidden_states)
+            logging.warning(f"all_hidden_states_array shape : {all_hidden_states_array.shape}")
             all_hidden_states_base64 = base64.b64encode(all_hidden_states_array.tobytes()).decode('ascii')
             complete_response['extra_outputs']['all_hidden_states'] = all_hidden_states_base64
             

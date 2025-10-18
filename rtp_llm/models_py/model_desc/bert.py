@@ -42,15 +42,19 @@ class BertDecoderLayer(nn.Module):
     ) -> torch.Tensor:
         residual = hidden_states
         # Self Attention
+        print("forward start bert attn")
         hidden_states = self.self_attn(
             hidden_states=hidden_states, fmha_impl=fmha_impl, kv_cache=kv_cache
         )
+        print("forward start bert attn end")
         hidden_states = residual + hidden_states
         hidden_states = self.input_layernorm(hidden_states)
 
         # Fully Connected
         residual = hidden_states
+        print("forward start bert mlp start")
         hidden_states = self.mlp(hidden_states)
+        print("forward start bert mlp end")
         hidden_states = residual + hidden_states
         hidden_states = self.post_attention_layernorm(hidden_states)
         return hidden_states
@@ -75,9 +79,10 @@ class BertModel(GptModelBase):
         )
 
     def forward(self, inputs: PyModelInputs) -> PyModelOutputs:
+        print("forward start bert")
         input_ids: torch.Tensor = inputs.input_ids
         bert_embedding_inputs = inputs.bert_embedding_inputs
-
+        print("forward start embedding lookup")
         inputs_embeds = self.embed_tokens(
             input_ids,
             bert_embedding_inputs.combo_position_ids,
@@ -86,6 +91,7 @@ class BertModel(GptModelBase):
             bert_embedding_inputs.token_type_embedding,
             bert_embedding_inputs.input_embedding_scalar,
         )
+        print("forward end embedding lookup")
         hidden_states = self.pre_decoder_layernorm(inputs_embeds)
         attention_inputs: PyAttentionInputs = inputs.attention_inputs
         fmha_impl = self.get_fmha_impl(attention_inputs)

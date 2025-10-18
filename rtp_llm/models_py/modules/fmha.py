@@ -67,6 +67,10 @@ class FMHAImplBase(object):
             self.write_cache_store_impl(kv_cache)
         assert self.fmha_impl is not None
         reserve_shape_tensor: torch.Tensor = fmha_input
+        print(f"self.prefill_cuda_graph_copy_params hsh")
+        print(
+            f"self.prefill_cuda_graph_copy_params: {self.prefill_cuda_graph_copy_params}"
+        )
         if self.prefill_cuda_graph_copy_params:
             fmha_input = cuda_graph_copy_small2large(
                 fmha_input,
